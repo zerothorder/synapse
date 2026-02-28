@@ -1,0 +1,30 @@
+# compiled binaries
+*.o
+*.pdb
+*.ilk
+*.exp
+
+# Executables
+*.exe
+*.out
+*.obj
+*.lib
+
+
+# Ignore MNIST data directories
+data/
+MNIST/
+mnist_data/
+raw/
+processed/
+
+# generated output files
+*.csv
+
+.vscode/
+.idea/
+*.suo
+*.user
+
+Thumbs.db
+desktop.ini
