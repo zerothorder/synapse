@@ -1,30 +1,35 @@
-# compiled binaries
+# ===== C++ Build =====
 *.o
+*.obj
 *.pdb
 *.ilk
 *.exp
-
-# Executables
+*.lib
 *.exe
 *.out
-*.obj
-*.lib
+nn
 
-
-# Ignore MNIST data directories
+# ===== Dataset =====
+mnist/
 data/
 MNIST/
 mnist_data/
 raw/
 processed/
 
-# generated output files
+# ===== Generated Files =====
 *.csv
 
+# ===== Python =====
+__pycache__/
+*.pyc
+
+# ===== IDE =====
 .vscode/
 .idea/
 *.suo
 *.user
 
+# ===== OS =====
 Thumbs.db
 desktop.ini
