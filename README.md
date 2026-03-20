@@ -17,12 +17,13 @@ Raw matrix math, backprop from scratch, and SGD with learning rate decay.
 1. [overview](#overview)
 2. [architecture](#architecture)
 3. [optimizations](#optimizations)
-4. [results](#results)
-5. [build & run](#build--run)
-6. [file structure](#file-structure)
-7. [what i learned](#what-i-learned)
-8. [future improvements](#future-improvements)
-9. [disclosure](#disclosure)
+4. [benchmarks](#benchmarks)
+5. [results](#results)
+6. [build & run](#build--run)
+7. [file structure](#file-structure)
+8. [what i learned](#what-i-learned)
+9. [future improvements](#future-improvements)
+10. [disclosure](#disclosure)
 
 ---
 
@@ -44,10 +45,12 @@ Input (784) → Dense (128) → tanh → Dense (128) → tanh → Dense (10) →
 |---|---|
 | loss | cross-entropy |
 | optimizer | SGD |
-| learning rate | 0.01 / (epoch + 1) |
+| learning rate | 0.1 / (epoch + 1) |
 | weight init | Xavier |
-| epochs | 3 |
+| epochs | 50 |
+| batch size | 32 |
 | training samples | 60,000 |
+| test samples | 10,000 |
 
 ---
 
@@ -57,7 +60,7 @@ Input (784) → Dense (128) → tanh → Dense (128) → tanh → Dense (10) →
 |---|---|---|
 | IKJ loop order | sequential memory access in matmul inner loop | ~4x faster than naive ijk |
 | AVX2 + FMA | 8 floats per instruction via 256-bit SIMD | meaningful speedup on matmul |
-| cache tiling | 32×32 blocks to maximize L1/L2 cache reuse | helps on larger matrices |
+| cache tiling | 32×32 blocks to fit in L1 cache | no measurable impact at these matrix sizes |
 | Xavier init | `stddev = sqrt(1/fan_in)` — prevents vanishing gradients at init | better convergence |
 | LR decay | reduces learning rate each epoch | smoother loss curve |
 | heap optimization | x and y matrices allocated once outside training loop | eliminates 180k heap allocs |
@@ -71,13 +74,28 @@ g++ main.cpp -O2 -march=native -mavx2 -mfma -o nn
 
 ---
 
+## benchmarks
+
+| configuration | time | accuracy |
+|---|---|---|
+| single-sample SGD, 3 epochs | ~330s | 97.34% |
+| + AVX2 SIMD | ~320s | 97.34% |
+| mini-batching (batch=32), 3 epochs | ~85s | 97.41% |
+| mini-batching, 50 epochs | ~393s | 97.80% |
+
+*tested on Ryzen 7 7735HS, Windows, MinGW*
+
+**key finding:** mini-batching gave a 13x speedup over single-sample SGD for the same 3 epochs — from 330s to 85s — while maintaining equivalent accuracy. further gains came from simply running more epochs within the same time budget rather than architectural changes.
+
+---
+
 ## results
 
 ```
-Test Accuracy:  97.59%   (10,000 unseen images)
-Training Time:  ~320s    (Ryzen 7 7735HS, Windows)
-Epochs:         3
-Final Loss:     0.055
+Test Accuracy:  97.80%   (10,000 unseen images)
+Training Time:  ~393s    (Ryzen 7 7735HS, Windows)
+Epochs:         50
+Final Loss:     0.0301
 ```
 
 ---
@@ -103,7 +121,7 @@ g++ main.cpp -O2 -march=native -mavx2 -mfma -o nn
 
 **visualize training results:**
 ```bash
-pip install matplotlib pandas numpy seaborn
+pip install matplotlib pandas numpy
 python visualize.py
 ```
 
@@ -132,6 +150,7 @@ python visualize.py
 - AVX2 intrinsics are approachable once you understand memory layout
 - ReLU needs babysitting (dying neurons). tanh just works for shallow nets
 - OpenMP thread overhead can exceed gains on small matrices
+- the architecture is the real ceiling. no amount of micro-optimization fixes a fundamentally limited model
 
 ---
 
@@ -144,7 +163,7 @@ License: MIT
 
 ## future improvements(maybe)
 
-- [ ] mini-batch SGD
+- [x] mini-batch SGD
 - [ ] momentum / Adam optimizer
 - [ ] model save / load
 - [ ] deeper / wider network
