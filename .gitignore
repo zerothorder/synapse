@@ -16,6 +16,7 @@ MNIST/
 mnist_data/
 raw/
 processed/
+Random tests/
 
 # ===== Generated Files =====
 *.csv
