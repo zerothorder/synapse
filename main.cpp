@@ -25,7 +25,12 @@ int main() {
 
     auto model = make_model<float>(784, 10, 128, 2, 0.01f);
 
-    int epochs = 3;
+    int epochs = 50;
+
+    int batch_size = 32;
+
+    Matrix<float> x(784, batch_size);
+    Matrix<float> y(10, batch_size);
 
     std::ofstream log_file("training_log.csv");
     log_file << "epoch,loss\n";
@@ -35,33 +40,40 @@ int main() {
 
     for(int e = 0; e < epochs; e++) {
 
-        model.lr = 0.01f / (e + 1);       // variable lr -- lr reduces as it converges
+        model.lr = 0.1f / (e + 1);       // variable lr -- lr reduces as it converges
         // model.lr = 0.01f*std::pow(0.85f, e);
         float total_loss = 0;
 
-        Matrix<float> x(784, 1);
-        Matrix<float> y(10,1);
 
-        for(unsigned int i = 0; i < count; i++) {
+        for(unsigned int i = 0; i < count; i+=batch_size) {
             
             
-            for(int row = 0; row < 28; row++) {
-                for(int col = 0; col < 28; col++) {
-                    x(row * 28 + col, 0) = data[i].data[row][col];
-                }
-            }
-            
-            //reset val
+            // guard
+            if(i + batch_size > count) break;
+
+            std::fill(x.data.begin(), x.data.end(), 0.0f);
             std::fill(y.data.begin(), y.data.end(), 0.0f);
 
-            y(data[i].label, 0) = 1.0f;
+            for(int b = 0; b < batch_size; b++) {
+                for(int row = 0; row < 28; row++)
+                    for(int col = 0; col < 28; col++)
+                        x(row * 28 + col, b) = data[i + b].data[row][col];
+                y(data[i + b].label, b) = 1.0f;
+            }
 
             auto y_hat = model.forward(x);
             model.backprop(y);
 
-            //cross-entropy
-            float loss = model.cross_entropy(y_hat, y);
-            total_loss += loss;
+            // average loss over batch
+            for(int b = 0; b < batch_size; b++) {
+                Matrix<float> y_hat_col(10, 1);
+                Matrix<float> y_col(10, 1);
+                for(int j = 0; j < 10; j++) {
+                    y_hat_col(j, 0) = y_hat(j, b);
+                    y_col(j, 0) = y(j, b);
+                }
+                total_loss += model.cross_entropy(y_hat_col, y_col);
+            }
         }
 
         float avg_loss = total_loss / count;
@@ -81,7 +93,7 @@ int main() {
 
     std::cout << "\nTesting:\n";
 
-    Matrix<float> x(784, 1);
+
     for(int i = 0; i < test_count; i++) {
 
         for(int row = 0; row < 28; row++) {

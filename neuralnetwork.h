@@ -46,18 +46,22 @@ namespace nn {
 
             //softmax
             Matrix<T> softmax(Matrix<T> x) {
-                T max_val = *std::max_element(x.data.begin(), x.data.end());
-
                 Matrix<T> output(x.shape.first, x.shape.second);
-                T sum = T(0);
-                
-                for(size_t i=0; i<x.shape.first; i++) {
-                    output(i, 0) = std::exp(x(i, 0)-max_val);
-                    sum += output(i, 0);
-                }
 
-                for(size_t i=0; i<x.shape.first; i++) {
-                    output(i, 0) /= sum;
+                for(size_t c=0; c<x.shape.second; c++) {
+                    T max_val = T(-1e9);
+                    for(size_t i=0; i<x.shape.first; i++)
+                        max_val = std::max(max_val, x(i, c));
+                    
+                    T sum = T(0);
+                    for(size_t i=0; i<x.shape.first; i++) {
+                        output(i, c) = std::exp(x(i, c)-max_val);
+                        sum += output(i, c);
+                    }
+
+                    for(size_t i=0; i<x.shape.first; i++) {
+                        output(i, c) /= sum;                        
+                    }
                 }
                 return output;
             }
@@ -75,14 +79,17 @@ namespace nn {
             }
 
             auto forward(Matrix<T> x) {
-                assert(x.shape.first == units_per_layer[0] && x.shape.second == 1);
+                assert(x.shape.first == units_per_layer[0]);
 
                 activations[0] = x;
                 Matrix<T> prev = x;
                 for(size_t i=0; i<units_per_layer.size()-1; i++) {
 
                     Matrix<T> y = weight_matrices[i].matmul(prev);
-                    y = y + bias_vectors[i];
+                    for(size_t col = 0; col < y.shape.second; col++)
+                        for(size_t row = 0; row < y.shape.first; row++)
+                            y(row, col) += bias_vectors[i](row, 0);
+
                     if(i < units_per_layer.size()-2) {
                         y = y.apply_function([this](T v) { return tanh_act(v); });
                         // y = y.apply_function([this](T v) { return relu(v); });
@@ -105,10 +112,11 @@ namespace nn {
             // }
 
             void backprop(Matrix<T> target) {
-                assert(target.shape.first == units_per_layer.back() && target.shape.second == 1);
+                assert(target.shape.first == units_per_layer.back());
 
                 auto y_hat = activations.back();
                 auto error = (y_hat - target); // MSE derivative
+                size_t batch_size = target.shape.second;
 
                 for(int i = weight_matrices.size() - 1; i >= 0; i--) {
 
@@ -123,15 +131,25 @@ namespace nn {
                         gradients = gradients.multiply_elementwise(d_outputs);
                     }
 
-                    gradients = gradients.multiply_scalar(lr);
-
                     auto a_trans = activations[i].T();
                     auto weight_gradients = gradients.matmul(a_trans);
                     
+                    weight_gradients = weight_gradients.multiply_scalar(1.0f/batch_size);
+                    
+                    Matrix<T> bias_grad(gradients.shape.first, 1);
+                    for(size_t r=0; r<gradients.shape.first; r++) {
+                        T sum = T(0);
+                        for(size_t c=0; c<batch_size; c++)
+                            sum += gradients(r, c);
+                        bias_grad(r, 0) = sum/batch_size;
+                    }
+
                     auto Wt = weight_matrices[i].T();
 
-                    bias_vectors[i] = bias_vectors[i].subtract(gradients);
-                    weight_matrices[i] = weight_matrices[i].subtract(weight_gradients);
+                    auto bias_update = bias_grad.multiply_scalar(lr);
+                    auto weight_update = weight_gradients.multiply_scalar(lr);
+                    bias_vectors[i] = bias_vectors[i].subtract(bias_update);
+                    weight_matrices[i] = weight_matrices[i].subtract(weight_update);
 
                     error = Wt.matmul(error);
                 }
