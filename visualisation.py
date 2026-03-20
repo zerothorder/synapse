@@ -35,13 +35,20 @@ def style_ax(ax, title):
 # ── 1. Loss Curve ──────────────────────────────────────────────────────────────
 ax1 = fig.add_subplot(gs[0, 0])
 style_ax(ax1, "Training Loss")
-ax1.plot(log["epoch"], log["loss"], color=ACCENT, linewidth=3, marker="o", markersize=8)
-for x, y in zip(log["epoch"], log["loss"]):
-    ax1.annotate(f"{y:.4f}", (x, y), textcoords="offset points",
-                 xytext=(0, 12), ha="center", color=ACCENT, fontsize=9)
+ax1.plot(log["epoch"], log["loss"], color=ACCENT, linewidth=2.5)
 ax1.set_xlabel("Epoch")
 ax1.set_ylabel("Cross-Entropy Loss")
-ax1.set_xticks(log["epoch"])
+ax1.set_xticks([0, 10, 20, 30, 40, 49])
+
+# annotate key epochs
+key_epochs = [0, 4, 9, 14, 19, 29, 39, 49]
+for idx in key_epochs:
+    x_val = log["epoch"].iloc[idx]
+    y_val = log["loss"].iloc[idx]
+    ax1.annotate(f"{y_val:.4f}",
+                 (x_val, y_val),
+                 textcoords="offset points",
+                 xytext=(0, 12), ha="center", color=ACCENT, fontsize=8)
 
 # ── 2. Per-Digit Accuracy ──────────────────────────────────────────────────────
 ax2 = fig.add_subplot(gs[0, 1])
@@ -117,26 +124,28 @@ ax6.set_facecolor(PANEL_BG)
 ax6.axis("off")
 ax6.set_title("Summary", color="white", fontsize=11, fontweight="bold", pad=10)
 stats = [
-    ("Architecture",     "784→128→128→10"),
-    ("Activation",       "tanh + softmax"),
-    ("Optimizer",        "SGD"),
-    ("Learning Rate",    "0.01 / (epoch + 1)"),
-    ("Epochs",           "3"),
-    ("Train Samples",    "60,000"),
-    ("Final Loss",       f"{log['loss'].iloc[-1]:.4f}"),
-    ("Train Accuracy",   f"{accuracy:.2f}%"),
-    ("Best Digit",       f"{np.argmax(digit_acc)} ({max(digit_acc):.1f}%)"),
-    ("Worst Digit",      f"{np.argmin(digit_acc)} ({min(digit_acc):.1f}%)"),
+    ("Architecture",  "784→128→128→10"),
+    ("Activation",    "tanh + softmax"),
+    ("Optimizer",     "SGD"),
+    ("Batch Size",    "32"),
+    ("Learning Rate", "0.1 / (epoch + 1)"),
+    ("Epochs",        "50"),              
+    ("Train Samples", "60,000"),
+    ("Test Samples",  "10,000"),
+    ("Final Loss",    f"{log['loss'].iloc[-1]:.4f}"),
+    ("Test Accuracy", f"{accuracy:.2f}%"),
+    ("Best Digit",    f"{np.argmax(digit_acc)} ({max(digit_acc):.1f}%)"),
+    ("Worst Digit",   f"{np.argmin(digit_acc)} ({min(digit_acc):.1f}%)"),
 ]
 for idx, (k, v) in enumerate(stats):
-    y_pos = 0.92 - idx * 0.09
+    y_pos = 0.92 - idx * 0.085
     ax6.text(0.02, y_pos, k + ":", transform=ax6.transAxes,
              color=GRAY, fontsize=9, va="top")
     ax6.text(0.98, y_pos, v, transform=ax6.transAxes,
              color=ACCENT, fontsize=9, va="top", ha="right", fontweight="bold")
 
 # ── Title ──────────────────────────────────────────────────────────────────────
-fig.suptitle(f"Neural Network from Scratch — MNIST  |  Training Accuracy: {accuracy:.2f}%",
+fig.suptitle(f"Neural Network from Scratch — MNIST  |  Test Accuracy: {accuracy:.2f}%",
              color="white", fontsize=14, fontweight="bold", y=0.98)
 
 plt.savefig("nn_results.png", dpi=150,
